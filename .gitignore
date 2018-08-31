@@ -2,3 +2,4 @@ AUTHORS
 ChangeLog
 build
 *.cpp
+.pytest_cache

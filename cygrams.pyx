@@ -2,39 +2,54 @@
 
 from libcpp.map cimport map
 from libcpp.string cimport string
+from libcpp.pair cimport pair
+from cython.operator cimport preincrement
 
 
-cdef class Cygrams(dict):
+cdef map[string,int] _calculate_counts(items, int min_n, int max_n):
+    cdef int i, j, n, count, length
+    cdef map[string,int] counts
+    cdef string item_string
+    min_n *= 4
+    max_n = (max_n + 1) * 4  # max_n is inclusive
+    for item in items:
+        item_string = item.encode('utf-32')[4:]  # 0..4 bytes is a BOM
+        with nogil:
+            length = item_string.length()
+            for i in range(0, length - min_n + 4, 4):
+                n = max_n
+                if i + n > length + 4:
+                    n = length + 4 - i
+                for j in range(min_n, n, 4):
+                    preincrement(counts[item_string.substr(i, j)])
+    return counts
 
-    cdef readonly int min_n, max_n
 
-    def __init__(self, min_n, max_n):
-        self.min_n = min_n
-        self.max_n = max_n
+def calculate_counts(items, int min_n, int max_n):
+    cdef map[string,int] counts = _calculate_counts(items, min_n, max_n)
+    cdef pair[string,int] i
+    ret = {}
+    for i in counts:
+        s = i.first.decode('utf-32')
+        if not s:
+            print(i.first)
+        ret[s] = i.second
+    return ret
 
-    def build_topK(self, items, int min_df=100, int K=0):
-        cdef int i, j, n, count, length
-        cdef map[string,int] counts
-        cdef string item_string
-        for item in items:
-            item_string = item.encode('utf-32')
-            length = len(item)
-            with nogil:
-                for i in range(length - self.min_n):
-                    n = self.max_n
-                    if i + n > length:
-                        n = length - i
-                    for j in range(self.min_n, n):
-                        counts[item_string.substr(i * 4, j * 4)] += 1
-        ngrams = sorted((
-            (-count, ngram)
-            for ngram, count in counts
-            if count >= min_df
-        ))
-        if K:
-            for n, (count, ngram) in zip(range(K), ngrams):
-                self[ngram.decode('utf-32')] = n
-        else:
-            for n, (count, ngram) in enumerate(ngrams):
-                self[ngram.decode('utf-32')] = n
-        return self
+
+def build_topK(items, int min_n, int max_n, int min_df=100, int K=0):
+    cdef map[string,int] counts = _calculate_counts(items, min_n, max_n)
+    cdef pair[string,int] counts_item
+    ngrams = []
+    for counts_item in counts:
+        if counts_item.second >= min_df:
+            ngrams.append((-counts_item.second, counts_item.first))
+    ngrams.sort()
+    ret = {}
+    if K:
+        for n, (count, ngram) in zip(range(K), ngrams):
+            ret[ngram.decode('utf-32')] = n
+    else:
+        for n, (count, ngram) in enumerate(ngrams):
+            ret[ngram.decode('utf-32')] = n
+    return ret
