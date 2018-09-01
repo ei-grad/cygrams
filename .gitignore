@@ -1,6 +1,7 @@
 AUTHORS
 ChangeLog
 build
+dist
 *.c
 *.cpp
 .pytest_cache
