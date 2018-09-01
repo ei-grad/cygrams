@@ -2,7 +2,9 @@
 
 from libcpp.map cimport map
 from libcpp.string cimport string
+from libcpp.vector cimport vector
 from libcpp.pair cimport pair
+from libcpp.algorithm cimport sort as cpp_sort
 from cython.operator cimport preincrement
 
 
@@ -30,26 +32,24 @@ def calculate_counts(items, int min_n, int max_n):
     cdef pair[string,int] i
     ret = {}
     for i in counts:
-        s = i.first.decode('utf-32')
-        if not s:
-            print(i.first)
-        ret[s] = i.second
+        ret[i.first.decode('utf-32')] = i.second
     return ret
 
 
 def build_topK(items, int min_n, int max_n, int min_df=100, int K=0):
     cdef map[string,int] counts = _calculate_counts(items, min_n, max_n)
-    cdef pair[string,int] counts_item
-    ngrams = []
-    for counts_item in counts:
-        if counts_item.second >= min_df:
-            ngrams.append((-counts_item.second, counts_item.first))
-    ngrams.sort()
+    cdef pair[string,int] it
+    cdef vector[pair[int,string]] ngrams
+    cdef int i, n
+    with nogil:
+        for it in counts:
+            if it.second >= min_df:
+                ngrams.push_back(pair[int,string](-it.second, it.first))
+        cpp_sort(ngrams.begin(), ngrams.end())
+        n = ngrams.size()
+        if n < K:
+            n = K
     ret = {}
-    if K:
-        for n, (count, ngram) in zip(range(K), ngrams):
-            ret[ngram.decode('utf-32')] = n
-    else:
-        for n, (count, ngram) in enumerate(ngrams):
-            ret[ngram.decode('utf-32')] = n
+    for i in range(n):
+        ret[ngrams[i].second.decode('utf-32')] = i
     return ret

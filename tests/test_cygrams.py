@@ -9,7 +9,6 @@ def true_ngrams_counts(items, min_n, max_n):
     for i in items:
         for j in range(len(i)-min_n+1):
             for k in range(j + min_n, min(j + max_n, len(i) + 1)):
-                print("QQQ", j, k, i[j:k])
                 ret[i[j:k]] += 1
     return dict(ret)
 
@@ -20,3 +19,8 @@ def test_topK():
 
 def test_counts():
     assert cygrams.calculate_counts(['Прирвет, мир ир!'], 1, 4) == true_ngrams_counts(['Прирвет, мир ир!'], 1, 4)
+
+
+if __name__ == "__main__":
+    test_topK()
+    test_counts()

@@ -1,5 +1,8 @@
 AUTHORS
 ChangeLog
 build
+*.c
 *.cpp
 .pytest_cache
+*.so
+cython_debug
